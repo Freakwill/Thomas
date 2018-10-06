@@ -1,6 +1,10 @@
 # Thomas
 My Bayes algorithm, for the name of Thomas Bayes
 
+## Features
+* Cope with continuous random varaibles intellegently.
+* integer random varaibles (e.g. the mass of things with integer gram) will be treated as continuous ones in some case.
+
 ## Why
 For the Honor of T. Bayes
 
