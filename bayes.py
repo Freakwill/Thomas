@@ -3,10 +3,10 @@
 
 import numpy as np
 
-from collections import Iterator
 from toolz import unique
 
 from thomas.field import *
+
 
 def check(y_true, y_pred):
     tp = fp = fn = tn = 0
@@ -51,6 +51,7 @@ class OneZeroClassifier(Classifier):
 class BayesClassifier(Classifier):
     def __init__(self, labels, features, labelDist):
         super(BayesClassifier, self).__init__(labels, features, labelDist)
+        self.eps = 0.25
 
     def totalProb(self, x):
         pass
@@ -90,7 +91,7 @@ class BayesClassifier(Classifier):
             BayesClassifier
         '''
         
-        features = [Field.fromValuesx([_ for _ in x_train.loc[:, key] if str(_) != 'nan'], key) for key in x_train.columns]
+        features = [Field.fromValuesx([_ for _ in x_train[key] if str(_) != 'nan'], key) for key in x_train.columns]
 
         labels = list(unique(y_train))
 
@@ -108,20 +109,32 @@ class BayesClassifier(Classifier):
         nbc.y_train = y_train
         return nbc
 
-class OneZeroBayesClassifier(BayesClassifier, OneZeroClassifier):
+class OneZeroBayesClassifier(OneZeroClassifier, BayesClassifier):
 
     def predict_with_prob(self, x):
         p = self.jointProb(x, 0)
         q = self.jointProb(x, 1)
-        if q > q:
+        if p > q:
             return 0, p / self.labelDist[0]
         else:
             return 1, q / self.labelDist[1]
 
+    def predict_with_prob(self, x):
+        p = self.jointProb(x, 0)
+        q = self.jointProb(x, 1)
+        return p < q
+
     @classmethod   
-    def fromDataFrame(cls, pos_train, neg_train):
+    def fromPN(cls, pos_train, neg_train):
         
-        features = [Field.fromValues([_ for _ in x_train.loc[:, key] if str(_) != 'nan'], key) for key in unique(pos_train.columns + neg_train.columns)]
+        features = []
+        for key in pos_train.columns:
+            f = Field.fromValuesx([_ for _ in pos_train[key] if str(_) != 'nan'], key)
+            features.append(f)
+        for key in neg_train.columns:
+            if key not in pos_train.columns:
+                f = Field.fromValuesx([_ for _ in neg_train[key] if str(_) != 'nan'], key)
+                features.append(f)
 
         Np = len(pos_train)
         Nn = len(neg_train)
@@ -145,7 +158,7 @@ class NaiveBayesClassifier(BayesClassifier):
 
 
     def _jointProb(self, f, x, c):
-        eps = 0.005
+        eps = 0.3
         N = len(self.y_train)
         xs = self.x_train[f.name]
         
@@ -169,9 +182,9 @@ class NaiveBayesClassifier(BayesClassifier):
                     if str(x) == 'nan':
                         if str(xi) == 'nan':
                             n += 1
-                    elif str(xi) != 'nan' and abs(xi - x) < f.step:
+                    elif str(xi) != 'nan' and f.approx(xi, x):
                         n += 1
-            p = (n + eps) / (N + (f.part + 1) * eps)
+            p = (n + eps) / (N + (f.part + 1) ** f.dim * eps)
             return p
 
 
@@ -184,4 +197,34 @@ class NaiveBayesClassifier(BayesClassifier):
 
 
 class OneZeroNaiveBayesClassifier(OneZeroBayesClassifier, NaiveBayesClassifier):
-    pass
+    def _jointProb(self, f, x, c):
+        eps = 0.4
+        N = len(self.pos_train) + len(self.neg_train)
+        if c == 1:
+            xs = self.pos_train[f.name]
+        else:
+            xs = self.neg_train[f.name]
+        
+        if f.is_discrete:
+            if f.name in self.jointProbDict and (x, c) in self.jointProbDict[f.name]:
+                return self.jointProbDict[f.name][(x, c)]
+            n = 0
+            for xi in xs:
+                if xi == x:
+                    n += 1
+            k = len(set(xs))
+            p = (n + eps) / (N + k * eps)       # Bayes estimate
+            if f.name not in self.jointProbDict:
+                self.jointProbDict[f.name] = {}
+            self.jointProbDict[f.name].setdefault((x, c), p)
+            return p
+        else:
+            n = 0
+            for xi in xs:
+                if str(x) == 'nan':
+                    if str(xi) == 'nan':
+                        n += 1
+                elif str(xi) != 'nan' and f.approx(xi, x):
+                    n += 1
+            p = (n + eps) / (N + (f.part + 1) ** f.dim * eps)
+            return p
