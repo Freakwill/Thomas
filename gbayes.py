@@ -14,9 +14,18 @@ class SemiNaiveBayesClassifier(BayesClassifier):
     pass
 
 class ZeroOneSemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBayesClassifier):
+    '''0-1 SemiNaiveBayesClassifier
+    
+    Principle:
+    P(c|X,Y) ~ P(X|c) P(c|Y) ~ prod_i p(x_i | c) fc(Y)
+    
+    Extends:
+        ZeroOneNaiveBayesClassifier
+        SemiNaiveBayesClassifier
+    '''
 
     def condProb(self, x, z, c):
-        # indepenence
+        # P(c|X,Y) ~ P(X|c) P(c|Y) ~ prod_i p(x_i | c) fc(Y)
         p1 = np.prod([self._condProb(f, xi, c) for f, xi in zip(self.features, x)])
         p2 = self._predict(z, c)
         return p1 * p2
@@ -32,6 +41,17 @@ class ZeroOneSemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
 
     @classmethod   
     def fromPN(cls, pos_train1, neg_train1, z_train, y_train):
+        '''
+        a neural network will be trained with z_train, y_train
+        
+        Arguments:
+            pos_train1, neg_train1 same in super class
+            z_train {DateFrame}
+            y_train {Array}
+        
+        Returns:
+            ZeroOneSemiNaiveBayesClassifier
+        '''
         
         sbc = super(ZeroOneSemiNaiveBayesClassifier, cls).fromPN(pos_train1, neg_train1)
         grnn = algorithms.GRNN(std=0.5, verbose=False)
