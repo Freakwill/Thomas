@@ -11,10 +11,10 @@ from sklearn.model_selection import train_test_split
 
 
 train = pd.read_excel('modeling_data.xls', encoding='utf-8')
-x = train['批次完成时间'] - train['批次开始时间']
+
+train['批次时间'] = [_.total_seconds() for _ in train['批次完成时间'] - train['批次开始时间']]
 
 train['L-W'] = [(l, w) for l, w in zip(train['长度'], train['重量'])]
-train['批次时间'] = [_.total_seconds() for _ in x]
 train = train.drop(columns=['批次开始时间', '批次完成时间', '配方ID', '长度', '重量', '流程卡号', '缸号', '客户'])
 
 # train.fillna(0)

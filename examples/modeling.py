@@ -10,10 +10,9 @@ from sklearn.model_selection import train_test_split
 
 
 train = pd.read_excel('modeling_data.xls', encoding='utf-8')
-x = train['批次完成时间'] - train['批次开始时间']
 
 train['L-W'] = [(l, w) for l, w in zip(train['长度'], train['重量'])]
-train['批次时间'] = [_.total_seconds() for _ in x]
+train['批次时间'] = [_.total_seconds() for _ in train['批次完成时间'] - train['批次开始时间']]
 
 # train.fillna(0)
 y_train = train['质量问题']
