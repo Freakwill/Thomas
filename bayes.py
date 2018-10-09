@@ -42,16 +42,19 @@ class Classifier(object):
         self.labelDist = labelDist
         self.jointProbDict = {}
 
+    def predictdf(self, df):
+        return [self.predict(row) for k, row in df.iterrows()]
+        
 
-class OneZeroClassifier(Classifier):
+class ZeroOneClassifier(Classifier):
     def __init__(self, features, labelDist):
-        super(OneZeroClassifier, self).__init__([0, 1], features, labelDist)
+        super(ZeroOneClassifier, self).__init__([0, 1], features, labelDist)
 
 
 class BayesClassifier(Classifier):
     def __init__(self, labels, features, labelDist):
         super(BayesClassifier, self).__init__(labels, features, labelDist)
-        self.eps = 0.25
+        self.eps = 0.55
 
     def totalProb(self, x):
         pass
@@ -109,7 +112,7 @@ class BayesClassifier(Classifier):
         nbc.y_train = y_train
         return nbc
 
-class OneZeroBayesClassifier(OneZeroClassifier, BayesClassifier):
+class ZeroOneBayesClassifier(ZeroOneClassifier, BayesClassifier):
 
     def predict_with_prob(self, x):
         p = self.jointProb(x, 0)
@@ -119,7 +122,7 @@ class OneZeroBayesClassifier(OneZeroClassifier, BayesClassifier):
         else:
             return 1, q / self.labelDist[1]
 
-    def predict_with_prob(self, x):
+    def predict(self, x):
         p = self.jointProb(x, 0)
         q = self.jointProb(x, 1)
         return p < q
@@ -158,7 +161,7 @@ class NaiveBayesClassifier(BayesClassifier):
 
 
     def _jointProb(self, f, x, c):
-        eps = 0.3
+        eps = self.eps
         N = len(self.y_train)
         xs = self.x_train[f.name]
         
@@ -195,10 +198,10 @@ class NaiveBayesClassifier(BayesClassifier):
         return self.lables, self.features, self.labelDist, self.jointProbDict
 
 
+class ZeroOneNaiveBayesClassifier(ZeroOneBayesClassifier, NaiveBayesClassifier):
 
-class OneZeroNaiveBayesClassifier(OneZeroBayesClassifier, NaiveBayesClassifier):
     def _jointProb(self, f, x, c):
-        eps = 0.4
+        eps = self.eps
         N = len(self.pos_train) + len(self.neg_train)
         if c == 1:
             xs = self.pos_train[f.name]
@@ -228,3 +231,33 @@ class OneZeroNaiveBayesClassifier(OneZeroBayesClassifier, NaiveBayesClassifier):
                     n += 1
             p = (n + eps) / (N + (f.part + 1) ** f.dim * eps)
             return p
+
+    def plot(self, feature1, feature2, axes=None):
+        from matplotlib.font_manager import FontProperties
+        myfont = FontProperties(fname='/System/Library/Fonts/PingFang.ttc')
+        p = self.pos_train[[feature1, feature2]]
+        n = self.neg_train[[feature1, feature2]]
+        import matplotlib.pyplot as plt
+        if axes is None:
+            axes = plt.figure().add_subplot(111)
+        axes.plot(p, '+b', label='pos')
+        axes.plot(n, '.r', label='neg')
+        axes.set_xlabel(feature1, fontproperties=myfont)
+        axes.set_ylabel(feature2, fontproperties=myfont)
+        plt.show()
+
+    def plot3D(self, feature1, feature2, feature3, axes=None):
+        from matplotlib.font_manager import FontProperties
+        myfont = FontProperties(fname='/System/Library/Fonts/PingFang.ttc')
+        px, py, pz = self.pos_train[feature1], self.pos_train[feature2], self.pos_train[feature3]
+        nx, ny, nz = self.neg_train[feature1], self.neg_train[feature2], self.neg_train[feature3]
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+        if axes is None:
+            axes = Axes3D(plt.figure())
+        axes.plot3D(px, py, pz, '+b', label='pos')
+        axes.plot3D(nx, ny, nz, '.r', label='neg')
+        axes.set_xlabel(feature1, fontproperties=myfont)
+        axes.set_ylabel(feature2, fontproperties=myfont)
+        axes.set_zlabel(feature3, fontproperties=myfont)
+        plt.show()

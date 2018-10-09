@@ -3,3 +3,4 @@
 
 from thomas.bayes import *
 from thomas.field import *
+from thomas.gbayes import *
