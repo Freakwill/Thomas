@@ -61,6 +61,13 @@ class ZeroOneSemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
 
         return sbc
 
+    @classmethod   
+    def fromDataFrame(cls, x_train, z_train, y_train):
+        # Call fromPN
+        pos_train = x_train[y_train==1]
+        neg_train = x_train[y_train==0]
+        return cls.fromPN(pos_train, neg_train, z_train, y_train)
+
     def predictdf(self, df):
         cs = []
         for k in range(0, len(df)):
@@ -68,15 +75,3 @@ class ZeroOneSemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
             z = df.loc[df.index[k], self.features2]
             cs.append(self.predict(x, z))
         return cs
-
-
-    # @classmethod   
-    # def fromDataFrame(cls, x_train, z_train, y_train):
-    #     cls.fromDataFrame(x_train, y_train)
-
-    #     grnn = algorithms.GRNN(std=0.5, verbose=False)
-    #     grnn.train(z_train, y_train)
-
-    #     nbc.model = grnn
-
-    #     return nbc
