@@ -5,6 +5,12 @@ My Bayes algorithm, for the name of Thomas Bayes
 * Cope with continuous random varaibles intellegently.
 * integer random varaibles (e.g. the mass of things with integer gram) will be treated as continuous ones in some case.
 
+## Requirement
+* numpy
+* pandas
+* scikit-learn (in examples)
+* neupy (in gbayes.py)
+
 ## Why
 For the Honor of T. Bayes
 
