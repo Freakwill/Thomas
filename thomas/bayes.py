@@ -28,7 +28,7 @@ class ZeroOneClassifier(Classifier):
 class BayesClassifier(Classifier):
     def __init__(self, labels, features, labelDist):
         super(BayesClassifier, self).__init__(labels, features, labelDist)
-        self.eps = 0.55
+        self.eps = 3
 
     def totalProb(self, x):
         pass
@@ -39,11 +39,14 @@ class BayesClassifier(Classifier):
     def jointProb(self, x, c):
         return self.condProb(x, c) * self.labelDist[c]
 
+    def log_jointProb(self, x, c):
+        return self.log_condProb(x, c) - np.log(self.labelDist[c])
+
     def condProb(self, x, c):
         pass
 
     def predict(self, x):
-        k = np.argmax([self.jointProb(x, c) for c in self.labels])
+        k = np.argmin([self.log_jointProb(x, c) for c in self.labels])
         cx = self.labels[k]
         return cx
 
@@ -97,9 +100,9 @@ class ZeroOneBayesClassifier(ZeroOneClassifier, BayesClassifier):
             return 1, q / self.labelDist[1]
 
     def predict(self, x):
-        p = self.jointProb(x, 0)
-        q = self.jointProb(x, 1)
-        return p < q
+        p = self.log_jointProb(x, 0)
+        q = self.log_jointProb(x, 1)
+        return p > q
 
     @classmethod   
     def fromPN(cls, pos_train, neg_train):
@@ -129,9 +132,15 @@ class NaiveBayesClassifier(BayesClassifier):
         # indepenence
         return np.prod([self._condProb(f, xi, c) for f, xi in zip(self.features, x)])
 
+    def log_condProb(self, x, c):
+        # indepenence
+        return np.sum([self._log_condProb(f, xi, c) for f, xi in zip(self.features, x)])
 
     def _condProb(self, f, x, c):
         return self._jointProb(f, x, c) / self.labelDist[c]
+
+    def _log_condProb(self, f, x, c):
+        return -np.log(self._jointProb(f, x, c)) + np.log(self.labelDist[c])
 
 
     def _jointProb(self, f, x, c):
@@ -163,6 +172,38 @@ class NaiveBayesClassifier(BayesClassifier):
                         n += 1
             p = (n + eps) / (N + (f.part + 1) ** f.dim * eps)
             return p
+
+    def jointProb_ratio(self, f, x, c1, c2):
+        # p(x, c1) / p(x, c2)
+        eps = self.eps
+        xs = self.x_train[f.name]
+        
+        if f.is_discrete:
+            n1 = n2 = 0
+            for xi, ci in zip(xs, self.y_train):
+                if xi == x:
+                    if ci == c1:
+                        n1 += 1
+                    elif ci == c2:
+                        n2 += 1
+            p = (n1 + eps) / (n2 + eps)       # Bayes estimate
+            return p
+        else:
+            n1 = 0
+            for xi, ci in zip(xs, self.y_train):
+                if str(x) == 'nan':
+                    if str(xi) == 'nan':
+                        if ci == c1:
+                            n1 += 1
+                        elif ci == c2:
+                            n2 += 1
+                elif str(xi) != 'nan' and f.approx(xi, x):
+                    if ci == c1:
+                        n1 += 1
+                    elif ci == c2:
+                        n2 += 1
+            p = (n1 + eps) / (n2 + eps)
+        return p
 
 
     def __setstate__(self, state):
@@ -205,6 +246,36 @@ class ZeroOneNaiveBayesClassifier(ZeroOneBayesClassifier, NaiveBayesClassifier):
                     n += 1
             p = (n + eps) / (N + (f.part + 1) ** f.dim * eps)
             return p
+
+    def jointProb_ratio(self, f, x):
+        # p(x, 1) / p(x, 0) ~ N1(x) / N0(x)
+        eps = self.eps
+        
+        if f.is_discrete:
+            n1 = n2 = 0
+            for xi in self.pos_train[f.name]:
+                if xi == x:
+                    n1 += 1
+            for xi in self.neg_train[f.name]:
+                if xi == x:
+                    n2 += 1
+            return (n1 + eps) / (n2 + eps)       # Bayes estimate
+        else:
+            n1 = n2 = 0
+            for xi in self.pos_train[f.name]:
+                if str(x) == 'nan':
+                    if str(xi) == 'nan':
+                        n1 += 1
+                elif str(xi) != 'nan' and f.approx(xi, x):
+                    n1 += 1
+            for xi in self.neg_train[f.name]:
+                if str(x) == 'nan':
+                    if str(xi) == 'nan':
+                        n2 += 1
+                elif str(xi) != 'nan' and f.approx(xi, x):
+                    n2 += 1
+            return (n1 + eps) / (n2 + eps)
+
 
     def plot(self, feature1, feature2, axes=None):
         from matplotlib.font_manager import FontProperties

@@ -4,14 +4,20 @@
 from collections import Iterable, Counter
 
 import numpy as np
+import numpy.linalg as LA
 
+def _min(xs):
+    return min(x for x in xs if x!=0)
+
+def _max(xs):
+    return max(x for x in xs if x!=0)
 
 class Field(object):
     '''Field has 3 (principal) propteries
     name: name
     type_: type 
     range_: range  [None]'''
-    defaultPart = 12
+    defaultPart = 18
 
     def __init__(self, name='none', type_=str, range_=None):
         self.name = name
@@ -90,11 +96,15 @@ class Field(object):
             f = Field.fromValue(values[0], name)
             if f.is_continuous or continuous:
                 if isinstance(values[0], Iterable):
-                    f.range_ = np.array([min(v[k] for v in values) for k in range(f.dim)]), np.array([max(v[k] for v in values) for k in range(f.dim)])
+                    A = np.array([value for value in values if 0 not in value])
+                    f.range_ = A.min(axis=0), A.max(axis=0)
+                    # stds = np.array([np.std([v[k] for v in values]) for k in range(f.dim)])
+                    f.part = Field.defaultPart
+                    f.is_hybrid = True
                 else:
-                    f.range_ = min(values), max(values)
+                    f.range_ = _min(values), _max(values)
+                    f.part = Field.defaultPart
                 f.is_discrete = False
-                f.part = Field.defaultPart
             return f
         else:
             return Field(name, float)
@@ -118,7 +128,9 @@ class Field(object):
     def __str__(self):
         return self.name
 
-    def approx(self, a, b):
+    def approx(self, a, b, step=None):
+        if step is None:
+            step = self.step
         if self.is_discrete:
             return a == b
         elif self.is_hybrid:
