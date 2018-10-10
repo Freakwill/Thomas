@@ -34,10 +34,6 @@ def nb():
     y_pred = nbc.predictdf(x_test)
     scores = check(y_test, y_pred)
     print(report(scores))
-    print('f-score(p)', fscore(*scores))
-    print('f-socre(n)', fnscore(*scores))
-    m = mcc(*scores)
-    print('mcc', m)
 
 nb()
 
