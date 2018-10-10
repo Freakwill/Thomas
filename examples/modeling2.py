@@ -18,7 +18,7 @@ train = train.drop(columns=['批次开始时间', '批次完成时间', '配方I
 
 # train.fillna(0)
 y_train = train['质量问题']
-
+# select train data and test data from samples randomly
 x_train, x_test, y_train, y_test = train_test_split(train, y_train, test_size=0.3)
 
 z_train = x_train[[s for s in train.columns if s.startswith('助剂') or  s.startswith('燃料') or s.startswith('光谱值')]]
