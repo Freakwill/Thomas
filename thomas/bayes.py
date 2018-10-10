@@ -3,8 +3,6 @@
 
 import numpy as np
 
-from toolz import unique
-
 from thomas.field import *
 
 
@@ -72,7 +70,7 @@ class BayesClassifier(Classifier):
         
         features = [Field.fromValuesx([_ for _ in x_train[key] if str(_) != 'nan'], key) for key in x_train.columns]
 
-        labels = list(unique(y_train))
+        labels = list(set(y_train))
 
         N = len(y_train)
         labelDist = {}
