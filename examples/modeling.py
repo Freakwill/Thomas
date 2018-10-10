@@ -26,8 +26,6 @@ import thomas
 def nb():
     
     nbc = thomas.ZeroOneNaiveBayesClassifier.fromPN(pos_train, neg_train)
-    # nbc.plot3D('GSM  克重', 'Length 长度', '批次时间')
-    # raise
 
     y_pred = [nbc.predict(x) for x in x_test.values]
     scores = check(y_test, y_pred)
@@ -36,9 +34,6 @@ def nb():
     print('f-socre(n)', fnscore(*scores))
     m = mcc(*scores)
     print('mcc', m)
-    print('Q2', m**2*len(y_test))
-    c = chi2_contingency([scores[:2], scores[2:]])
-    print('chi2_contingency', c[1])
 
 
 nb()
