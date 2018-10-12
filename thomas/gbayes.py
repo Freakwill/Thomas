@@ -1,7 +1,11 @@
 #!/usr/local/bin/python
 # -*- coding: utf-8 -*-
 
+'''Generalized Bayes Classifiers
+'''
+
 import numpy as np
+from sklearn import svm
 
 from thomas.field import *
 from thomas.bayes import *
@@ -9,6 +13,8 @@ from thomas.bayes import *
 from neupy import algorithms, environment
 
 environment.reproducible()
+
+model_dict={'svm':svm.SVC(kernel='rbf'), 'grnn':algorithms.GRNN(verbose=False), 'pnn':algorithms.PNN(verbose=False)}
 
 class SemiNaiveBayesClassifier(BayesClassifier):
     pass
@@ -78,7 +84,7 @@ class ZeroOneSemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
 
 
 class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBayesClassifier):
-    '''0-1 SemiNaiveBayesClassifier
+    '''0-1 HemiNaiveBayesClassifier
     
     Principle:
     P(c|X,Y1, Y2) ~ P(X|c) P(c|Y) ~ prod_i p(x_i | c) fc(Y1)gc(Y2)
@@ -102,13 +108,15 @@ class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
 
 
     def _predict(self, zs, c):
-        p = np.prod([model.predict([z])[0][0] for model, z in zip(self.models, zs)])
+        p = np.prod(np.array([model.predict([z]) for model, z in zip(self.models, zs)]).ravel())
         return p if c else 1-p
 
     def predict(self, x, zs):
+        # prod_i N1(xi) / N0(xi) * (f(y)/(1-f(y)) * (N0 / N1) ** n
         pc = self._predict(zs, 1)
         n = len(self.features)
-        r = np.prod([self.jointProb_ratio(f, xi) for xi, f in zip(x, self.features)]) * (pc / (1 - pc)) * (self.labelDist[0] / self.labelDist[1]) ** n
+        m = len(self.features2)
+        r = np.prod([self.jointProb_ratio(f, xi) for xi, f in zip(x, self.features)]) * (pc / (1 - pc)) * (self.labelDist[0] / self.labelDist[1]) ** (n + m -1)
         return r > 1
 
     # def predict(self, x, zs):
@@ -117,7 +125,7 @@ class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
     #     return p > q
 
     @classmethod   
-    def fromPN(cls, pos_train, neg_train, z_trains, y_train):
+    def fromPN(cls, pos_train, neg_train, z_trains, y_train, models=None):
         '''
         a neural network will be trained with z_trains, y_train
         
@@ -131,21 +139,19 @@ class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
         '''
         
         sbc = super(ZeroOneHemiNaiveBayesClassifier, cls).fromPN(pos_train, neg_train)
-        sbc.models = []
-        for z_train in z_trains:
-            nn = algorithms.GRNN(std=0.2, verbose=False)
-            nn.train(z_train, y_train)
-            sbc.models.append(nn)
-        sbc.features2 = [z_train.columns for z_train in z_trains]
-
+        if models is None:
+            models = [algorithms.GRNN(std=0.2, verbose=False) for z_train in z_trains]
+            sbc.features2 = [z_train.columns for z_train in z_trains]
+        sbc.models = models
+        sbc.fit(z_trains, y_train)
         return sbc
 
     @classmethod   
-    def fromDataFrame(cls, x_train, z_trains, y_train):
+    def fromDataFrame(cls, x_train, z_trains, y_train, models=None):
         # Call fromPN
         pos_train = x_train[y_train==1]
         neg_train = x_train[y_train==0]
-        return cls.fromPN(pos_train, neg_train, z_trains, y_train)
+        return cls.fromPN(pos_train, neg_train, z_trains, y_train, models=None)
 
     def predictdf(self, df):
         cs = []
@@ -154,3 +160,13 @@ class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
             zs = [df.loc[df.index[k], fs] for fs in self.features2]
             cs.append(self.predict(x, zs))
         return cs
+
+    def fit(self, z_trains, y_train):
+        for model, z_train in zip(self.models, z_trains):
+            if isinstance(model, str):
+                model = model_dict[model]
+            if hasattr(model, 'fit'):
+                model.fit(z_train, y_train)
+            else:
+                model.train(z_train, y_train)
+

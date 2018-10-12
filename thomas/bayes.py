@@ -28,7 +28,7 @@ class ZeroOneClassifier(Classifier):
 class BayesClassifier(Classifier):
     def __init__(self, labels, features, labelDist):
         super(BayesClassifier, self).__init__(labels, features, labelDist)
-        self.eps = 3
+        self.eps = 2
 
     def totalProb(self, x):
         pass

@@ -17,7 +17,7 @@ class Field(object):
     name: name
     type_: type 
     range_: range  [None]'''
-    defaultPart = 18
+    defaultPart = 16
 
     def __init__(self, name='none', type_=str, range_=None):
         self.name = name
