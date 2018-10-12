@@ -70,4 +70,4 @@ iff $r\geq 1$, $(x,y)$ is in class 1, else in class 0.
 $p(x)\sim \frac{N(x)}{N}, N(x):$ the number of samples in a neighborhood of $x$
 
 
-()[https://github.com/Freakwill/Thomas/blob/master/README.png]
+![](https://github.com/Freakwill/Thomas/blob/master/README.png)
