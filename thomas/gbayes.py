@@ -140,9 +140,10 @@ class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
         
         sbc = super(ZeroOneHemiNaiveBayesClassifier, cls).fromPN(pos_train, neg_train)
         if models is None:
-            models = [algorithms.GRNN(std=0.2, verbose=False) for z_train in z_trains]
-            sbc.features2 = [z_train.columns for z_train in z_trains]
-        sbc.models = models
+            sbc.models = [algorithms.PNN(std=0.1, verbose=False) for z_train in z_trains]
+        else:
+            sbc.models = [copy.copy(model_dict[model]) if isinstance(model, str) else model for model in models]
+        sbc.features2 = [z_train.columns for z_train in z_trains]
         sbc.fit(z_trains, y_train)
         return sbc
 
@@ -151,7 +152,7 @@ class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
         # Call fromPN
         pos_train = x_train[y_train==1]
         neg_train = x_train[y_train==0]
-        return cls.fromPN(pos_train, neg_train, z_trains, y_train, models=None)
+        return cls.fromPN(pos_train, neg_train, z_trains, y_train, models=models)
 
     def predictdf(self, df):
         cs = []
@@ -163,8 +164,6 @@ class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
 
     def fit(self, z_trains, y_train):
         for model, z_train in zip(self.models, z_trains):
-            if isinstance(model, str):
-                model = model_dict[model]
             if hasattr(model, 'fit'):
                 model.fit(z_train, y_train)
             else:
