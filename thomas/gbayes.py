@@ -60,7 +60,7 @@ class ZeroOneSemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
         '''
         
         sbc = super(ZeroOneSemiNaiveBayesClassifier, cls).fromPN(pos_train1, neg_train1)
-        nn = algorithms.GRNN(std=0.2, verbose=False)
+        nn = algorithms.GRNN(std=np.std(z_train.values), verbose=False)
         nn.train(z_train, y_train)
         sbc.model = nn
         sbc.features2 = z_train.columns
@@ -103,20 +103,20 @@ class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
     def log_condProb(self, x, zs, c):
         # P(c|X,Y) ~ P(X|c) P(c|Y) ~ prod_i p(x_i | c) fc(Y)
         l1 = np.sum([self._log_condProb(f, xi, c) for f, xi in zip(self.features, x)])
-        l2 = -np.log(self._predict(zs, c))
+        l2 = - np.log(self._predict(zs, c))
         return l1 + l2
 
 
-    def _predict(self, zs, c):
-        p = np.prod(np.array([model.predict([z]) for model, z in zip(self.models, zs)]).ravel())
-        return p if c else 1-p
+    def _predict(self, zs):
+        ps = np.array([model.predict([z]) for model, z in zip(self.models, zs)]).ravel()
+        return np.prod(ps / (1 - ps))
 
     def predict(self, x, zs):
         # prod_i N1(xi) / N0(xi) * (f(y)/(1-f(y)) * (N0 / N1) ** n
-        pc = self._predict(zs, 1)
+        p = self._predict(zs)
         n = len(self.features)
         m = len(self.features2)
-        r = np.prod([self.jointProb_ratio(f, xi) for xi, f in zip(x, self.features)]) * (pc / (1 - pc)) * (self.labelDist[0] / self.labelDist[1]) ** (n + m -1)
+        r = np.prod([self.jointProb_ratio(f, xi) for xi, f in zip(x, self.features)]) * p * (self.labelDist[0] / self.labelDist[1]) ** (n + m -1)
         return r > 1
 
     # def predict(self, x, zs):
@@ -140,7 +140,7 @@ class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
         
         sbc = super(ZeroOneHemiNaiveBayesClassifier, cls).fromPN(pos_train, neg_train)
         if models is None:
-            sbc.models = [algorithms.PNN(std=0.1, verbose=False) for z_train in z_trains]
+            sbc.models = [algorithms.PNN(std=np.std(z_train.values), verbose=False) for z_train in z_trains]
         else:
             sbc.models = [copy.copy(model_dict[model]) if isinstance(model, str) else model for model in models]
         sbc.features2 = [z_train.columns for z_train in z_trains]
