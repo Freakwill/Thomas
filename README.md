@@ -61,6 +61,15 @@ def nb():
     print(report(scores))
 
 nb()
+
+# =>
+  | -> C1 | -> C0|
+    C1 | 72 | 93 |
+    C0 | 103 | 551 |
+----------------
+    f-score(p) 0.4235
+    f-socre(n) 0.8490
+    mcc 0.2729
 ```
 
 ## Is it easy?
