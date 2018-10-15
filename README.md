@@ -13,7 +13,8 @@ My Bayes algorithm, for the name of Thomas Bayes
 
 ## Install
 
-`pip install thomas`
+`pip install tomas`
+not `thomas` which had been regested.
 
 ## Why
 For the Honor of T. Bayes
