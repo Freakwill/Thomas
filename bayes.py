@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from thomas.field import *
+from .field import *
 
 
 class Classifier(object):

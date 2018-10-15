@@ -7,8 +7,8 @@
 import numpy as np
 from sklearn import svm
 
-from thomas.field import *
-from thomas.bayes import *
+from .field import *
+from .bayes import *
 
 from neupy import algorithms, environment
 
