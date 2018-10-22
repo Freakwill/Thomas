@@ -3,9 +3,11 @@
 
 '''Generalized Bayes Classifiers
 '''
+import copy
 
 import numpy as np
 from sklearn import svm
+from sklearn.linear_model import LassoLars
 
 from .field import *
 from .bayes import *
@@ -14,7 +16,8 @@ from neupy import algorithms, environment
 
 environment.reproducible()
 
-model_dict={'svm':svm.SVC(kernel='rbf'), 'grnn':algorithms.GRNN(verbose=False), 'pnn':algorithms.PNN(verbose=False)}
+model_dict={'svm':svm.SVC(kernel='rbf', gamma='scale'), 'grnn':algorithms.GRNN(verbose=False), 'pnn':algorithms.PNN(verbose=False)}
+model_class_dict={'svm':svm.SVC, 'grnn':algorithms.GRNN, 'pnn':algorithms.PNN, 'lasso':LassoLars}
 
 class SemiNaiveBayesClassifier(BayesClassifier):
     pass
@@ -108,7 +111,7 @@ class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
 
 
     def ratio2(self, zs):
-        ps = np.array([model.predict([z]) for model, z in zip(self.models, zs)]).ravel()
+        ps = np.array([model.predict([z]) for model, z in zip(self.models, zs) if np.all(list(map(lambda x: str(x)!='nan' and not np.isnan(x), z)))]).ravel()
         ps = np.array([p for p in ps if not np.isnan(p)])
         return np.prod(ps / (1 - ps))
 
@@ -140,8 +143,14 @@ class ZeroOneHemiNaiveBayesClassifier(ZeroOneNaiveBayesClassifier, SemiNaiveBaye
         '''
         
         sbc = super(ZeroOneHemiNaiveBayesClassifier, cls).fromPN(pos_train, neg_train)
-        if models is None:
+        if models is None or models == 'grnn':
             sbc.models = [algorithms.GRNN(std=np.std([a for a in z_train.values.ravel() if str(a)!='nan' and a!=0]), verbose=False) for z_train in z_trains]
+        elif models == 'pnn':
+            sbc.models = [algorithms.PNN(std=np.std([a for a in z_train.values.ravel() if str(a)!='nan' and a!=0]), verbose=False) for z_train in z_trains]
+        elif models == 'svm':
+            sbc.models = [svm.SVC(kernel='rbf') for z_train in z_trains]
+        elif models == 'lasso':
+            sbc.models = [LassoLars() for z_train in z_trains]
         else:
             sbc.models = [copy.deepcopy(model_dict[model]) if isinstance(model, str) else copy.deepcopy(model) for model in models]
         sbc.features2 = [z_train.columns for z_train in z_trains]

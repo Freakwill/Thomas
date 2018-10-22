@@ -17,7 +17,26 @@ class Classifier(object):
         self.jointProbDict = {}
 
     def predictdf(self, df):
-        return [self.predict(row) for k, row in df.iterrows()]
+        cs = []
+        for k in range(0, len(df)):
+            x = df.loc[df.index[k], [f.name for f in self.features]]
+            cs.append(self.predict(x))
+        return cs
+
+    # def errordf(self, df, test, weights=None):
+    #     if weights is None:
+    #         pred = self.predictdf(df)
+    #         e = np.mean([p - t for p, t in zip(pred, test)])
+    #         L = len(test)
+    #         new_weights = [1 / r / L if p==t else  r / L for p, t in zip(pred, test)]
+    #     else:
+    #         pred = self.predictdf(df)
+    #         e = np.sum([(p - t) * weight for p, t, weight in zip(pred, test, weights)])
+    #         new_weights = [w / r if p==t else w * r for p, t, w in zip(pred, test, weights)]
+    #     r = np.sqrt((1 - e) / e)
+    #     self.alpha = np.log(r)  # coef (weight) of classifier
+    #     return e, new_weights / np.sum(new_weights)
+
 
     @classmethod
     def bleach(cls, x_train, y_train):
@@ -36,11 +55,27 @@ class ZeroOneClassifier(Classifier):
     def __init__(self, features, labelDist):
         super(ZeroOneClassifier, self).__init__([0, 1], features, labelDist)
 
+    def errordf(self, df, test, weights=None):
+        if weights is None:
+            pred = self.predictdf(df)
+            L = len(test)
+            e = len([1 for predi, testi in zip(pred, test) if predi != testi]) / L
+            r = np.sqrt((1 - e) / e)
+            new_weights = [1 / r / L if p==t else  r / L for p, t in zip(pred, test)]
+        else:
+            pred = self.predictdf(df)
+            e = np.sum([weight for predi, testi, weight in zip(pred, test, weights) if predi != testi])
+            r = np.sqrt((1 - e) / e)
+            new_weights = [w / r if p==t else w * r for p, t, w in zip(pred, test, weights)]
+        self.alpha = np.log(r)  # coef (weight) of classifier
+        z = 2 * e * r
+        return e, new_weights / z
+
 
 class BayesClassifier(Classifier):
     def __init__(self, labels, features, labelDist):
         super(BayesClassifier, self).__init__(labels, features, labelDist)
-        self.eps = 2
+        self.eps = 1
 
     def totalProb(self, x):
         pass
@@ -94,7 +129,7 @@ class BayesClassifier(Classifier):
                     labelDist[l] += 1
             labelDist[l] /= N
 
-        nbc = cls(labels, features, labelDist)
+        nbc = cls(features, labelDist)
         nbc.x_train = x_train
         nbc.y_train = y_train
         return nbc
@@ -135,6 +170,12 @@ class ZeroOneBayesClassifier(ZeroOneClassifier, BayesClassifier):
         nbc.pos_train = pos_train
         nbc.neg_train = neg_train
         return nbc
+
+    @classmethod   
+    def fromDataFrame(cls, x_train, y_train):
+        pos_train = x_train[y_train==1]
+        neg_train = x_train[y_train==0]
+        return cls.fromPN(pos_train, neg_train)
 
 class NaiveBayesClassifier(BayesClassifier):
 
@@ -310,3 +351,27 @@ class ZeroOneNaiveBayesClassifier(ZeroOneBayesClassifier, NaiveBayesClassifier):
         axes.set_ylabel(feature2, fontproperties=myfont)
         axes.set_zlabel(feature3, fontproperties=myfont)
         plt.show()
+
+
+class StupidBayesClassifier(BayesClassifier):
+    def __init__(self, labels, features, labelDist):
+        super(StupidBayesClassifier, self).__init__(labels, features, labelDist)
+        p0 = 0
+        for l, p in labelDist.items():
+            if p > p0:
+                p0 = p
+                self.best_class = l
+
+    def predict(self, x):
+        return self.best_class
+
+class ZeroOneStupidBayesClassifier(ZeroOneBayesClassifier):
+    def __init__(self, features, labelDist):
+        super(ZeroOneStupidBayesClassifier, self).__init__(features, labelDist)
+        if labelDist[0] > labelDist[1]:
+            self.best_class = 0
+        else:
+            self.best_class = 1
+
+    def predict(self, x):
+        return self.best_class

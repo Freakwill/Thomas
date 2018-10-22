@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from collections import Iterable, Counter
+import types
 
 import numpy as np
 import numpy.linalg as LA
@@ -17,7 +18,7 @@ class Field(object):
     name: name
     type_: type 
     range_: range  [None]'''
-    defaultPart = 20
+    defaultPart = 12
 
     def __init__(self, name='none', type_=str, range_=None):
         self.name = name
@@ -101,6 +102,12 @@ class Field(object):
                     # stds = np.array([np.std([v[k] for v in values]) for k in range(f.dim)])
                     f.part = Field.defaultPart
                     f.is_hybrid = True
+                    cov = np.cov(np.transpose(A))
+                    f.cov = LA.inv(cov) * np.diag(cov).max()
+                    def ap(f, x, y):
+                        d = np.array(x)-np.array(y)
+                        return np.sqrt(np.dot(np.dot(d, f.cov), d)) < max(f.step)
+                    f.approx = types.MethodType(ap, f)
                 else:
                     f.range_ = _min(values), _max(values)
                     f.part = Field.defaultPart
