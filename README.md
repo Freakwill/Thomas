@@ -14,7 +14,7 @@ My Bayes algorithm, for the name of Thomas Bayes
 ## Install
 
 `pip install tomas`
-not `thomas` which had been regested.
+not `thomas` which had been registered.
 
 ## Why
 For the Honor of T. Bayes
